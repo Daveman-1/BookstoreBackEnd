@@ -4,23 +4,21 @@ const router = express.Router();
 const authenticateToken = require('../middleware/auth');
 const authorizeRoles = require('../middleware/role');
 
-// GET /api/store-details - get store details (public, no auth required for receipts)
+// GET /api/store-details - get store details
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM store_details LIMIT 1');
+    const { rows } = await pool.query('SELECT * FROM store_details LIMIT 1');
     if (rows.length === 0) {
       // Create default store details if none exist
       await pool.query(`
         INSERT INTO store_details (name, contact, website, address, fax, email, tax_number, receipt_footer, logo) 
         VALUES ('Bookstore', '', '', '', '', '', '', '', '')
       `);
-      const [newRows] = await pool.query('SELECT * FROM store_details LIMIT 1');
-      res.json({ storeDetails: newRows[0] });
-    } else {
-      res.json({ storeDetails: rows[0] });
+      const { rows: newRows } = await pool.query('SELECT * FROM store_details LIMIT 1');
+      return res.json({ store: newRows[0] });
     }
+    res.json({ store: rows[0] });
   } catch (err) {
-    console.error('Error fetching store details:', err);
     res.status(500).json({ message: 'Failed to fetch store details', error: err.message });
   }
 });
@@ -28,47 +26,27 @@ router.get('/', async (req, res) => {
 // PUT /api/store-details - update store details (admin only)
 router.put('/', authenticateToken, authorizeRoles('admin'), async (req, res) => {
   try {
-    const {
-      name,
-      contact,
-      website,
-      address,
-      fax,
-      email,
-      tax_number,
-      receipt_footer,
-      logo
-    } = req.body;
+    const { name, contact, website, address, fax, email, tax_number, receipt_footer, logo } = req.body;
+    if (!name) return res.status(400).json({ message: 'Store name is required' });
 
-    // Validate required fields
-    if (!name || name.trim() === '') {
-      return res.status(400).json({ message: 'Store name is required' });
-    }
+    const result = await pool.query(`
+      UPDATE store_details SET 
+        name=$1, contact=$2, website=$3, address=$4, fax=$5, 
+        email=$6, tax_number=$7, receipt_footer=$8, logo=$9
+      WHERE id = (SELECT id FROM store_details LIMIT 1)
+    `, [name, contact || '', website || '', address || '', fax || '', email || '', tax_number || '', receipt_footer || '', logo || '']);
 
-    // Update store details
-    const [result] = await pool.query(`
-      UPDATE store_details 
-      SET name = ?, contact = ?, website = ?, address = ?, fax = ?, 
-          email = ?, tax_number = ?, receipt_footer = ?, logo = ?, updated_at = NOW()
-      WHERE id = 1
-    `, [name, contact, website, address, fax, email, tax_number, receipt_footer, logo]);
-
-    if (result.affectedRows === 0) {
-      // If no rows were updated, create the first record
+    if (result.rowCount === 0) {
+      // Create if doesn't exist
       await pool.query(`
         INSERT INTO store_details (name, contact, website, address, fax, email, tax_number, receipt_footer, logo) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [name, contact, website, address, fax, email, tax_number, receipt_footer, logo]);
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `, [name, contact || '', website || '', address || '', fax || '', email || '', tax_number || '', receipt_footer || '', logo || '']);
     }
 
-    // Return updated store details
-    const [updatedRows] = await pool.query('SELECT * FROM store_details LIMIT 1');
-    res.json({ 
-      message: 'Store details updated successfully',
-      storeDetails: updatedRows[0]
-    });
+    const { rows: updatedRows } = await pool.query('SELECT * FROM store_details LIMIT 1');
+    res.json({ store: updatedRows[0], message: 'Store details updated successfully' });
   } catch (err) {
-    console.error('Error updating store details:', err);
     res.status(500).json({ message: 'Failed to update store details', error: err.message });
   }
 });

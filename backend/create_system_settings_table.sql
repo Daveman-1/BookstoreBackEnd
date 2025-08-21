@@ -1,13 +1,28 @@
--- Create system_settings table for storing store configuration
+-- Create system_settings table for storing store configuration (PostgreSQL)
 CREATE TABLE IF NOT EXISTS system_settings (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     setting_key VARCHAR(100) NOT NULL UNIQUE,
     setting_value TEXT,
     is_public BOOLEAN DEFAULT FALSE,
     description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Create function to update updated_at timestamp (if not already exists)
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Create trigger to automatically update updated_at
+CREATE TRIGGER update_system_settings_updated_at 
+    BEFORE UPDATE ON system_settings 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert default store settings
 INSERT INTO system_settings (setting_key, setting_value, is_public, description) VALUES
@@ -19,10 +34,10 @@ INSERT INTO system_settings (setting_key, setting_value, is_public, description)
 ('taxNumber', '', TRUE, 'Store tax number or VAT ID'),
 ('footer', '', TRUE, 'Custom footer message for receipts'),
 ('logo', '', TRUE, 'Store logo (base64 encoded)')
-ON DUPLICATE KEY UPDATE
-    setting_value = VALUES(setting_value),
-    description = VALUES(description),
-    is_public = VALUES(is_public);
+ON CONFLICT (setting_key) DO UPDATE SET
+    setting_value = EXCLUDED.setting_value,
+    description = EXCLUDED.description,
+    is_public = EXCLUDED.is_public;
 
 -- Verify the table was created and populated
 SELECT * FROM system_settings; 

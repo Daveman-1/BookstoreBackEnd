@@ -1,14 +1,29 @@
--- Create comprehensive system_settings table for all store configuration
+-- Create comprehensive system_settings table for all store configuration (PostgreSQL)
 CREATE TABLE IF NOT EXISTS system_settings (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     setting_key VARCHAR(100) NOT NULL UNIQUE,
     setting_value TEXT,
-    setting_category ENUM('store_info', 'business_settings', 'receipt_settings', 'system_settings') DEFAULT 'store_info',
+    setting_category VARCHAR(50) DEFAULT 'store_info' CHECK (setting_category IN ('store_info', 'business_settings', 'receipt_settings', 'system_settings')),
     is_public BOOLEAN DEFAULT FALSE,
     description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Create function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Create trigger to automatically update updated_at
+CREATE TRIGGER update_system_settings_updated_at 
+    BEFORE UPDATE ON system_settings 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert default store settings organized by categories
 INSERT INTO system_settings (setting_key, setting_value, setting_category, is_public, description) VALUES
@@ -62,15 +77,15 @@ INSERT INTO system_settings (setting_key, setting_value, setting_category, is_pu
 ('enable_two_factor', 'false', 'system_settings', FALSE, 'Enable two-factor authentication'),
 ('page_size', '20', 'system_settings', TRUE, 'Default page size for lists'),
 ('search_results_limit', '50', 'system_settings', TRUE, 'Maximum search results')
-ON DUPLICATE KEY UPDATE
-    setting_value = VALUES(setting_value),
-    setting_category = VALUES(setting_category),
-    description = VALUES(description),
-    is_public = VALUES(is_public);
+ON CONFLICT (setting_key) DO UPDATE SET
+    setting_value = EXCLUDED.setting_value,
+    setting_category = EXCLUDED.setting_category,
+    description = EXCLUDED.description,
+    is_public = EXCLUDED.is_public;
 
 -- Create indexes for better performance
-CREATE INDEX idx_setting_category ON system_settings(setting_category);
-CREATE INDEX idx_is_public ON system_settings(is_public);
+CREATE INDEX IF NOT EXISTS idx_setting_category ON system_settings(setting_category);
+CREATE INDEX IF NOT EXISTS idx_is_public ON system_settings(is_public);
 
 -- Verify the table was created and populated
 SELECT setting_category, setting_key, setting_value, is_public FROM system_settings ORDER BY setting_category, setting_key; 

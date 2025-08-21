@@ -1,0 +1,44 @@
+# ===========================================
+# COMPLETE .env FILE EXAMPLE
+# ===========================================
+
+# Database Configuration (PostgreSQL)
+DB_HOST=localhost
+DB_USER=postgres
+DB_PASSWORD=your_postgres_password_here
+DB_NAME=bookstore_management
+DB_PORT=5432
+
+# JWT Configuration (Generated secure secret)
+JWT_SECRET=6bba4b50efb11ff6cdb7e18991f011730744ea13b38515ef3301e51ce7e53fda
+
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+
+# CORS Configuration
+# For local development:
+CORS_ORIGIN=http://localhost:3000
+# For production (replace with your domain):
+# CORS_ORIGIN=https://yourdomain.com,https://www.yourdomain.com
+
+# Security
+BCRYPT_ROUNDS=12
+
+# Logging
+LOG_LEVEL=debug
+
+# ===========================================
+# RENDER PRODUCTION EXAMPLE
+# ===========================================
+# Copy the above and change these values for Render:
+
+# NODE_ENV=production
+# PORT=10000
+# DB_HOST=your-postgres-database-host.render.com
+# DB_USER=your_database_user
+# DB_PASSWORD=your_database_password
+# DB_NAME=your_database_name
+# DB_PORT=5432
+# CORS_ORIGIN=https://yourdomain.com
+# LOG_LEVEL=info 
