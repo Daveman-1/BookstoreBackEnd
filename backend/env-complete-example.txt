@@ -40,5 +40,13 @@ LOG_LEVEL=debug
 # DB_PASSWORD=your_database_password
 # DB_NAME=your_database_name
 # DB_PORT=5432
-# CORS_ORIGIN=https://yourdomain.com
-# LOG_LEVEL=info 
+# CORS_ORIGIN=https://bookstorefrontend-yrgv.onrender.com
+# LOG_LEVEL=info
+
+# ===========================================
+# IMPORTANT NOTES FOR RENDER
+# ===========================================
+# 1. The app automatically sets trust proxy for reverse proxies
+# 2. SSL is automatically configured for production database connections
+# 3. Database connection pooling is optimized for Render
+# 4. CORS is configured to allow your frontend domain 

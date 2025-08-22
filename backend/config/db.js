@@ -12,7 +12,16 @@ const dbConfig = {
   max: process.env.NODE_ENV === 'production' ? 20 : 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000, // Increased timeout
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: process.env.NODE_ENV === 'production' ? { 
+    rejectUnauthorized: false,
+    sslmode: 'require'
+  } : false,
+  // Additional connection options for Render
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
+  // Handle connection errors gracefully
+  connectionRetryAttempts: 3,
+  connectionRetryDelay: 1000
 };
 
 console.log('🔍 Database Config:', {
@@ -21,7 +30,8 @@ console.log('🔍 Database Config:', {
   database: dbConfig.database,
   port: dbConfig.port,
   ssl: dbConfig.ssl,
-  NODE_ENV: process.env.NODE_ENV
+  NODE_ENV: process.env.NODE_ENV,
+  isProduction: process.env.NODE_ENV === 'production'
 });
 
 // Create connection pool
@@ -32,10 +42,18 @@ const testConnection = async () => {
   try {
     const client = await pool.connect();
     logger.info('✅ PostgreSQL database connected successfully');
+    console.log('✅ Database connection successful to:', dbConfig.host);
     client.release();
   } catch (error) {
     logger.error('❌ Database connection failed:', error.message);
     console.error('🔍 Database connection error details:', error);
+    console.error('🔍 Connection config:', {
+      host: dbConfig.host,
+      port: dbConfig.port,
+      database: dbConfig.database,
+      user: dbConfig.user,
+      ssl: dbConfig.ssl
+    });
     
     // Don't exit in production, let the app handle it gracefully
     if (process.env.NODE_ENV !== 'production') {
@@ -43,6 +61,7 @@ const testConnection = async () => {
       process.exit(1);
     } else {
       console.error('🔍 Continuing in production mode despite database connection failure');
+      console.error('🔍 Please check your database environment variables on Render');
     }
   }
 };

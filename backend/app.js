@@ -10,6 +10,9 @@ const { securityHeaders, corsOptions, apiLimiter } = require('./middleware/secur
 
 const app = express();
 
+// Trust proxy for reverse proxies (important for Render)
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(securityHeaders);
 
@@ -37,6 +40,20 @@ app.use((req, res, next) => {
     return;
   }
   
+  next();
+});
+
+// Handle proxy headers properly
+app.use((req, res, next) => {
+  // Log request details for debugging
+  console.log('🔍 Request:', {
+    method: req.method,
+    url: req.url,
+    origin: req.headers.origin,
+    host: req.headers.host,
+    'x-forwarded-for': req.headers['x-forwarded-for'],
+    'x-forwarded-proto': req.headers['x-forwarded-proto']
+  });
   next();
 });
 
