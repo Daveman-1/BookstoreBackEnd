@@ -70,7 +70,55 @@ app.get('/cors-test', (req, res) => {
   });
 });
 
-// API routes
+// Simple test endpoint (no database required)
+app.get('/test', (req, res) => {
+  res.json({
+    message: 'Backend is working!',
+    timestamp: new Date().toISOString(),
+    cors: 'enabled',
+    database: 'not required for this endpoint'
+  });
+});
+
+// Database health check endpoint
+app.get('/db-health', async (req, res) => {
+  try {
+    const pool = require('./config/db');
+    const client = await pool.connect();
+    client.release();
+    res.json({ 
+      status: 'ok', 
+      message: 'Database connection successful',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('🔍 Database health check failed:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      message: 'Database connection failed',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// API routes with error handling
+app.use('/api', (req, res, next) => {
+  // Check if database is accessible before proceeding
+  const pool = require('./config/db');
+  pool.query('SELECT 1', (err) => {
+    if (err) {
+      console.error('🔍 Database check failed for API route:', err);
+      return res.status(503).json({
+        error: 'Service temporarily unavailable',
+        message: 'Database connection issue',
+        timestamp: new Date().toISOString()
+      });
+    }
+    next();
+  });
+});
+
 const apiRoutes = require('./routes');
 app.use('/api', apiRoutes);
 
@@ -96,6 +144,7 @@ app.get('/', (req, res) => {
     },
     endpoints: {
       health: '/api/health',
+      dbHealth: '/db-health',
       corsTest: '/cors-test',
       auth: '/api/auth',
       users: '/api/users',

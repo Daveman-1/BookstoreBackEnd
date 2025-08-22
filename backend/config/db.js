@@ -11,9 +11,18 @@ const dbConfig = {
   port: process.env.DB_PORT || 5432,
   max: process.env.NODE_ENV === 'production' ? 20 : 10,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 10000, // Increased timeout
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 };
+
+console.log('🔍 Database Config:', {
+  host: dbConfig.host,
+  user: dbConfig.user,
+  database: dbConfig.database,
+  port: dbConfig.port,
+  ssl: dbConfig.ssl,
+  NODE_ENV: process.env.NODE_ENV
+});
 
 // Create connection pool
 const pool = new Pool(dbConfig);
@@ -26,9 +35,14 @@ const testConnection = async () => {
     client.release();
   } catch (error) {
     logger.error('❌ Database connection failed:', error.message);
+    console.error('🔍 Database connection error details:', error);
+    
     // Don't exit in production, let the app handle it gracefully
     if (process.env.NODE_ENV !== 'production') {
+      console.error('🔍 Exiting due to database connection failure in development mode');
       process.exit(1);
+    } else {
+      console.error('🔍 Continuing in production mode despite database connection failure');
     }
   }
 };
@@ -36,6 +50,7 @@ const testConnection = async () => {
 // Handle pool errors
 pool.on('error', (err) => {
   logger.error('Database pool error:', err);
+  console.error('🔍 Database pool error:', err);
   if (err.code === 'ECONNRESET') {
     logger.error('Database connection was reset');
   }
