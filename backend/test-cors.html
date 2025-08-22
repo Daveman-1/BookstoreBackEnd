@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS Test - Bookstore Backend</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 CORS Test - Bookstore Backend</h1>
+    
+    <div class="test-section info">
+        <h3>Backend URL</h3>
+        <input type="text" id="backendUrl" value="http://localhost:5000" style="width: 100%; padding: 8px; margin: 5px 0;">
+        <p><strong>Make sure your backend is running on this port!</strong></p>
+    </div>
+
+    <div class="test-section">
+        <h3>1. Test Basic Connection</h3>
+        <button onclick="testBasicConnection()">Test Basic Connection</button>
+        <div id="basicResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Test CORS Endpoint</h3>
+        <button onclick="testCorsEndpoint()">Test CORS Endpoint</button>
+        <div id="corsResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Test Health Check</h3>
+        <button onclick="testHealthCheck()">Test Health Check</button>
+        <div id="healthResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4. Test API Endpoint</h3>
+        <button onclick="testApiEndpoint()">Test API Endpoint</button>
+        <div id="apiResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>5. Test with Credentials</h3>
+        <button onclick="testWithCredentials()">Test with Credentials</button>
+        <div id="credentialsResult"></div>
+    </div>
+
+    <script>
+        const backendUrl = document.getElementById('backendUrl');
+        
+        function showResult(elementId, success, message, data = null) {
+            const element = document.getElementById(elementId);
+            element.className = `test-section ${success ? 'success' : 'error'}`;
+            element.innerHTML = `
+                <h3>${success ? '✅ Success' : '❌ Error'}</h3>
+                <p><strong>${message}</strong></p>
+                ${data ? `<pre>${JSON.stringify(data, null, 2)}</pre>` : ''}
+            `;
+        }
+
+        async function testBasicConnection() {
+            try {
+                const response = await fetch(backendUrl.value);
+                const data = await response.json();
+                showResult('basicResult', true, 'Basic connection successful!', data);
+            } catch (error) {
+                showResult('basicResult', false, `Connection failed: ${error.message}`);
+            }
+        }
+
+        async function testCorsEndpoint() {
+            try {
+                const response = await fetch(`${backendUrl.value}/cors-test`);
+                const data = await response.json();
+                showResult('corsResult', true, 'CORS endpoint working!', data);
+            } catch (error) {
+                showResult('corsResult', false, `CORS test failed: ${error.message}`);
+            }
+        }
+
+        async function testHealthCheck() {
+            try {
+                const response = await fetch(`${backendUrl.value}/api/health`);
+                const data = await response.json();
+                showResult('healthResult', true, 'Health check successful!', data);
+            } catch (error) {
+                showResult('healthResult', false, `Health check failed: ${error.message}`);
+            }
+        }
+
+        async function testApiEndpoint() {
+            try {
+                const response = await fetch(`${backendUrl.value}/api/settings/public`);
+                const data = await response.json();
+                showResult('apiResult', true, 'API endpoint working!', data);
+            } catch (error) {
+                showResult('apiResult', false, `API test failed: ${error.message}`);
+            }
+        }
+
+        async function testWithCredentials() {
+            try {
+                const response = await fetch(`${backendUrl.value}/cors-test`, {
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                showResult('credentialsResult', true, 'Credentials test successful!', data);
+            } catch (error) {
+                showResult('credentialsResult', false, `Credentials test failed: ${error.message}`);
+            }
+        }
+
+        // Auto-update backend URL when input changes
+        document.getElementById('backendUrl').addEventListener('input', function() {
+            backendUrl.value = this.value;
+        });
+    </script>
+</body>
+</html> 

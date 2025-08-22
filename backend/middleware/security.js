@@ -32,21 +32,43 @@ const authLimiter = createRateLimiter(
 // Configure CORS for production
 const corsOptions = {
   origin: function (origin, callback) {
+    console.log('🔍 CORS Debug - Origin:', origin);
+    console.log('🔍 CORS Debug - CORS_ORIGIN env:', process.env.CORS_ORIGIN);
+    
+    // Default allowed origins
+    const defaultOrigins = [
+      'http://localhost:3000',
+      'https://bookstorefrontend-yrgv.onrender.com'
+    ];
+    
     const allowedOrigins = process.env.CORS_ORIGIN 
-      ? process.env.CORS_ORIGIN.split(',') 
-      : ['http://localhost:3000'];
+      ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+      : defaultOrigins;
+    
+    console.log('🔍 CORS Debug - Allowed origins:', allowedOrigins);
     
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('🔍 CORS Debug - No origin, allowing request');
+      return callback(null, true);
+    }
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
+      console.log('🔍 CORS Debug - Origin allowed:', origin);
       callback(null, true);
     } else {
+      console.log('🔍 CORS Debug - Origin blocked:', origin);
+      console.log('🔍 CORS Debug - Allowed origins were:', allowedOrigins);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
 // Security headers middleware
