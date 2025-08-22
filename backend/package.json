@@ -9,26 +9,32 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
-  "keywords": ["bookstore", "api", "express", "postgresql"],
+  "keywords": [
+    "bookstore",
+    "api",
+    "express",
+    "postgresql"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
+    "compression": "^1.7.4",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "pg": "^8.11.3",
-    "helmet": "^7.1.0",
     "express-rate-limit": "^7.1.5",
     "express-validator": "^7.0.1",
-    "winston": "^3.11.0",
-    "compression": "^1.7.4",
-    "morgan": "^1.10.0"
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "pg": "^8.11.3",
+    "winston": "^3.11.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2",
-    "eslint": "^8.56.0"
+    "eslint": "^8.56.0",
+    "nodemon": "^3.0.2"
   },
   "engines": {
     "node": ">=16.0.0"
