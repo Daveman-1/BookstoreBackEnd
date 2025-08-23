@@ -1,5 +1,5 @@
 const express = require('express');
-const pool = require('../config/db');
+const pool = require('../config/mysql');
 const router = express.Router();
 const authenticateToken = require('../middleware/auth');
 const authorizeRoles = require('../middleware/role');
@@ -7,7 +7,7 @@ const authorizeRoles = require('../middleware/role');
 // GET /api/items - list all items
 router.get('/', async (req, res) => {
   try {
-    const { rows: items } = await pool.query(`
+    const [items] = await pool.execute(`
       SELECT i.*, c.name as category_name 
       FROM items i 
       LEFT JOIN categories c ON i.category_id = c.id 
@@ -27,27 +27,27 @@ router.post('/', authenticateToken, authorizeRoles('admin'), async (req, res) =>
     if (!name || !price || !cost || !stock || !category) return res.status(400).json({ message: 'Missing required fields' });
 
     // Get or create category
-    let { rows: catRows } = await pool.query('SELECT id FROM categories WHERE name = $1', [category]);
+    let [catRows] = await pool.execute('SELECT id FROM categories WHERE name = ?', [category]);
     let categoryId;
     
     if (catRows.length === 0) {
-      const catResult = await pool.query('INSERT INTO categories (name) VALUES ($1) RETURNING id', [category]);
-      categoryId = catResult.rows[0].id;
+      const [catResult] = await pool.execute('INSERT INTO categories (name) VALUES (?)', [category]);
+      categoryId = catResult.insertId;
     } else {
       categoryId = catRows[0].id;
     }
 
-    const result = await pool.query(`
+    const [result] = await pool.execute(`
       INSERT INTO items (name, description, price, cost, stock, category_id, sku, image_url) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [name, description || '', price, cost, stock, categoryId, sku || '', image_url || '']);
 
-    const { rows: itemRows } = await pool.query(`
+    const [itemRows] = await pool.execute(`
       SELECT i.*, c.name as category_name 
       FROM items i 
       LEFT JOIN categories c ON i.category_id = c.id 
-      WHERE i.id = $1
-    `, [result.rows[0].id]);
+      WHERE i.id = ?
+    `, [result.insertId]);
 
     res.status(201).json({ item: itemRows[0] });
   } catch (err) {
@@ -63,28 +63,28 @@ router.put('/:id', authenticateToken, authorizeRoles('admin'), async (req, res) 
     if (!name || !price || !cost || !stock || !category) return res.status(400).json({ message: 'Missing required fields' });
 
     // Get or create category
-    let { rows: catRows } = await pool.query('SELECT id FROM categories WHERE name = $1', [category]);
+    let [catRows] = await pool.execute('SELECT id FROM categories WHERE name = ?', [category]);
     let categoryId;
     
     if (catRows.length === 0) {
-      const catResult = await pool.query('INSERT INTO categories (name) VALUES ($1) RETURNING id', [category]);
-      categoryId = catResult.rows[0].id;
+      const [catResult] = await pool.execute('INSERT INTO categories (name) VALUES (?)', [category]);
+      categoryId = catResult.insertId;
     } else {
       categoryId = catRows[0].id;
     }
 
-    const result = await pool.query(`
-      UPDATE items SET name=$1, description=$2, price=$3, cost=$4, stock=$5, category_id=$6, sku=$7, image_url=$8, is_active=$9 
-      WHERE id=$10
+    const [result] = await pool.execute(`
+      UPDATE items SET name=?, description=?, price=?, cost=?, stock=?, category_id=?, sku=?, image_url=?, is_active=? 
+      WHERE id=?
     `, [name, description || '', price, cost, stock, categoryId, sku || '', image_url || '', is_active == null ? true : is_active, id]);
 
-    if (result.rowCount === 0) return res.status(404).json({ message: 'Item not found' });
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Item not found' });
 
-    const { rows: itemRows } = await pool.query(`
+    const [itemRows] = await pool.execute(`
       SELECT i.*, c.name as category_name 
       FROM items i 
       LEFT JOIN categories c ON i.category_id = c.id 
-      WHERE i.id = $1
+      WHERE i.id = ?
     `, [id]);
 
     res.json({ item: itemRows[0] });
@@ -97,8 +97,8 @@ router.put('/:id', authenticateToken, authorizeRoles('admin'), async (req, res) 
 router.delete('/:id', authenticateToken, authorizeRoles('admin'), async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query('DELETE FROM items WHERE id = $1', [id]);
-    if (result.rowCount === 0) return res.status(404).json({ message: 'Item not found' });
+    const [result] = await pool.execute('DELETE FROM items WHERE id = ?', [id]);
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Item not found' });
     res.json({ message: 'Item deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Failed to delete item', error: err.message });
@@ -111,14 +111,14 @@ router.get('/search', async (req, res) => {
     const { q } = req.query;
     if (!q) return res.status(400).json({ message: 'Search query is required' });
 
-    const { rows: items } = await pool.query(`
+    const [items] = await pool.execute(`
       SELECT i.*, c.name as category_name 
       FROM items i 
       LEFT JOIN categories c ON i.category_id = c.id 
       WHERE i.is_active = TRUE 
-      AND (i.name ILIKE $1 OR i.description ILIKE $1 OR i.sku ILIKE $1 OR c.name ILIKE $1)
+      AND (i.name LIKE ? OR i.description LIKE ? OR i.sku LIKE ? OR c.name LIKE ?)
       ORDER BY i.name ASC
-    `, [`%${q}%`]);
+    `, [`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`]);
 
     res.json({ items });
   } catch (err) {

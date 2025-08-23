@@ -32,7 +32,7 @@ app.use((req, res, next) => {
   }
   
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.header('Access-Control-Allow-Headers', 'Content-Type', 'Authorization', 'X-Requested-With');
   res.header('Access-Control-Allow-Credentials', 'true');
   
   if (req.method === 'OPTIONS') {
@@ -93,49 +93,41 @@ app.get('/test', (req, res) => {
     message: 'Backend is working!',
     timestamp: new Date().toISOString(),
     cors: 'enabled',
-    database: 'not required for this endpoint'
+    database: 'MySQL'
   });
 });
 
-// Database health check endpoint
-app.get('/db-health', async (req, res) => {
+// MySQL health check endpoint
+app.get('/mysql-health', async (req, res) => {
   try {
-    const pool = require('./config/db');
-    const client = await pool.connect();
-    client.release();
+    const pool = require('./config/mysql');
+    if (!pool) {
+      return res.status(500).json({ 
+        status: 'error', 
+        message: 'MySQL not initialized',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Test with a simple query
+    const [rows] = await pool.execute('SELECT 1 as test');
     res.json({ 
       status: 'ok', 
-      message: 'Database connection successful',
+      message: 'MySQL connection successful',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('🔍 Database health check failed:', error);
+    console.error('🔍 MySQL health check failed:', error);
     res.status(500).json({ 
       status: 'error', 
-      message: 'Database connection failed',
+      message: 'MySQL connection failed',
       error: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// API routes with error handling
-app.use('/api', (req, res, next) => {
-  // Check if database is accessible before proceeding
-  const pool = require('./config/db');
-  pool.query('SELECT 1', (err) => {
-    if (err) {
-      console.error('🔍 Database check failed for API route:', err);
-      return res.status(503).json({
-        error: 'Service temporarily unavailable',
-        message: 'Database connection issue',
-        timestamp: new Date().toISOString()
-      });
-    }
-    next();
-  });
-});
-
+// API routes
 const apiRoutes = require('./routes');
 app.use('/api', apiRoutes);
 
@@ -145,7 +137,8 @@ app.get('/api/health', (req, res) => {
     status: 'ok', 
     message: 'BookStore backend is running.',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    database: 'MySQL'
   });
 });
 
@@ -155,13 +148,14 @@ app.get('/', (req, res) => {
     message: 'BookStore Management System API',
     version: '1.0.0',
     environment: process.env.NODE_ENV || 'development',
+    database: 'MySQL',
     cors: {
       enabled: true,
       allowedOrigins: process.env.CORS_ORIGIN || 'http://localhost:3000,https://bookstorefrontend-yrgv.onrender.com'
     },
     endpoints: {
       health: '/api/health',
-      dbHealth: '/db-health',
+      mysqlHealth: '/mysql-health',
       corsTest: '/cors-test',
       auth: '/api/auth',
       users: '/api/users',
