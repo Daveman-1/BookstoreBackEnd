@@ -128,7 +128,7 @@ app.get('/mysql-health', async (req, res) => {
 });
 
 // API routes
-const apiRoutes = require('./routes');
+const apiRoutes = require('./routes/index');
 app.use('/api', apiRoutes);
 
 // Health check endpoint

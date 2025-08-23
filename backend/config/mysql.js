@@ -2,6 +2,17 @@ const mysql = require('mysql2/promise');
 const logger = require('../utils/logger');
 require('dotenv').config();
 
+// 🔍 Validate required environment variables
+const requiredVars = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'DB_PORT'];
+requiredVars.forEach((key) => {
+  if (!process.env[key] && !process.env.DATABASE_URL) {
+    console.error(`❌ Missing environment variable: ${key}`);
+    if (process.env.NODE_ENV !== 'production') {
+      process.exit(1); // Fail fast in development
+    }
+  }
+});
+
 // Database configuration - support both connection string and individual parameters
 let dbConfig;
 
@@ -14,49 +25,37 @@ if (process.env.DATABASE_URL) {
     password: url.password,
     database: url.pathname.substring(1), // Remove leading slash
     port: url.port || 4000,
-    // TiDB Cloud specific optimizations
     waitForConnections: true,
     connectionLimit: 5, // Reduced for free tier
     queueLimit: 0,
-    acquireTimeout: 30000, // Increased timeout for cloud
+    acquireTimeout: 30000,
     timeout: 30000,
-    // SSL configuration for TiDB Cloud
     ssl: {
-      rejectUnauthorized: false,
+      rejectUnauthorized: true,
       minVersion: 'TLSv1.2'
     },
-    // Connection pool optimizations
     keepAlive: true,
-    keepAliveInitialDelayMillis: 10000,
-    // Handle connection errors gracefully
-    connectionRetryAttempts: 3,
-    connectionRetryDelay: 2000
+    keepAliveInitialDelayMillis: 10000
   };
 } else {
-  // Individual parameters
+  // Individual parameters (no fallback to localhost anymore)
   dbConfig = {
-    host: process.env.DB_HOST || 'localhost',
+    host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    port: process.env.DB_PORT || 4000,
-    // TiDB Cloud specific optimizations
+    port: process.env.DB_PORT,
     waitForConnections: true,
-    connectionLimit: process.env.NODE_ENV === 'production' ? 5 : 3, // Reduced for free tier
+    connectionLimit: process.env.NODE_ENV === 'production' ? 5 : 3,
     queueLimit: 0,
-    acquireTimeout: 30000, // Increased timeout for cloud
+    acquireTimeout: 30000,
     timeout: 30000,
-    // SSL configuration for TiDB Cloud
     ssl: {
-      rejectUnauthorized: false,
+      rejectUnauthorized: true,
       minVersion: 'TLSv1.2'
     },
-    // Connection pool optimizations
     keepAlive: true,
-    keepAliveInitialDelayMillis: 10000,
-    // Handle connection errors gracefully
-    connectionRetryAttempts: 3,
-    connectionRetryDelay: 2000
+    keepAliveInitialDelayMillis: 10000
   };
 }
 
@@ -80,11 +79,10 @@ const testConnection = async () => {
     const connection = await pool.getConnection();
     logger.info('✅ TiDB Cloud database connected successfully');
     console.log('✅ Database connection successful to:', dbConfig.host);
-    
-    // Test a simple query
+
     const [rows] = await connection.execute('SELECT 1 as test, NOW() as timestamp');
     console.log('✅ Test query successful:', rows[0]);
-    
+
     connection.release();
   } catch (error) {
     logger.error('❌ Database connection failed:', error.message);
@@ -96,8 +94,7 @@ const testConnection = async () => {
       user: dbConfig.user,
       ssl: dbConfig.ssl
     });
-    
-    // Don't exit in production, let the app handle it gracefully
+
     if (process.env.NODE_ENV !== 'production') {
       console.error('🔍 Exiting due to database connection failure in development mode');
       process.exit(1);
@@ -112,23 +109,9 @@ const testConnection = async () => {
 pool.on('error', (err) => {
   logger.error('Database pool error:', err);
   console.error('🔍 Database pool error:', err);
-  if (err.code === 'ECONNRESET') {
-    logger.error('Database connection was reset');
-  }
 });
-
-// Handle pool acquire (only in development)
-if (process.env.NODE_ENV === 'development') {
-  pool.on('connection', (client) => {
-    logger.debug('Client connected to database');
-  });
-
-  pool.on('release', (client) => {
-    logger.debug('Client released from pool');
-  });
-}
 
 // Test connection on startup
 testConnection();
 
-module.exports = pool; 
+module.exports = pool;
