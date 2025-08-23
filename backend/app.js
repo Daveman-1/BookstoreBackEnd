@@ -19,29 +19,8 @@ app.use(securityHeaders);
 // CORS configuration
 app.use(cors(corsOptions));
 
-// Additional CORS headers middleware (fallback)
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = [
-    'http://localhost:3000',
-    'https://bookstorefrontend-yrgv.onrender.com'
-  ];
-  
-  if (origin && allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type', 'Authorization', 'X-Requested-With');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  if (req.method === 'OPTIONS') {
-    res.status(204).end();
-    return;
-  }
-  
-  next();
-});
+// Handle preflight requests
+app.options('*', cors(corsOptions));
 
 // Handle proxy headers properly
 app.use((req, res, next) => {
@@ -73,6 +52,43 @@ app.use(morgan('combined', {
 
 // Rate limiting
 app.use('/api', apiLimiter);
+
+// Authentication debug endpoint
+app.get('/api/auth/status', (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  const status = {
+    hasAuthHeader: !!authHeader,
+    hasToken: !!token,
+    authHeader: authHeader ? authHeader.substring(0, 20) + '...' : null,
+    tokenLength: token ? token.length : 0,
+    jwtSecretConfigured: !!process.env.JWT_SECRET,
+    origin: req.headers.origin,
+    userAgent: req.headers['user-agent'],
+    timestamp: new Date().toISOString()
+  };
+  
+  if (token && process.env.JWT_SECRET) {
+    try {
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      status.tokenValid = true;
+      status.tokenPayload = {
+        id: decoded.id,
+        username: decoded.username,
+        role: decoded.role,
+        exp: decoded.exp,
+        expiresAt: new Date(decoded.exp * 1000).toISOString()
+      };
+    } catch (err) {
+      status.tokenValid = false;
+      status.tokenError = err.message;
+    }
+  }
+  
+  res.json(status);
+});
 
 // CORS test endpoint (for debugging)
 app.get('/cors-test', (req, res) => {

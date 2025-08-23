@@ -1,7 +1,7 @@
 const express = require('express');
 const pool = require('../config/mysql');
 const router = express.Router();
-const authenticateToken = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const authorizeRoles = require('../middleware/role');
 
 // GET /api/reports/daily-sales - get daily sales summary
